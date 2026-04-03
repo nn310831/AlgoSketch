@@ -1,3 +1,5 @@
+# 第 66~68 行要取消註解以讀取模型
+
 name: alsk_project
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
@@ -37,7 +39,9 @@ dependencies:
   equatable: ^2.0.8
   ffi: ^2.2.0
 
-  tflite_flutter: ^0.10.4
+  tflite_flutter: ^0.11.0
+  image_picker: ^1.0.7
+  provider: ^6.1.5+1
 
 dev_dependencies:
   flutter_test:
@@ -61,9 +65,9 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  assets:
-    - assets/model.tflite  # 宣告單一檔案
-    - assets/images/  
+  # assets:
+  #   - assets/model.tflite  # 宣告單一檔案
+  #   - assets/images/  
 
   # To add assets to your application, add an assets section, like this:
   # assets:

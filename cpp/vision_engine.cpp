@@ -3,6 +3,8 @@
 #include <cstdlib>
 #include <opencv2/opencv.hpp>
 
+//這裡要新增功能，掃描判斷邊上權重位置，並傳送給CNN判斷 weight
+
 // ==========================================
 // 1. 純 C++ 區塊 (內部邏輯)
 // ==========================================
@@ -71,6 +73,8 @@ extern "C" {
         int y1;
         int x2;
         int y2;
+        bool hasWeight; // 是否有找到文字墨水
+        float* pixels;  // 指向 28x28 權重影像的指標 (如果沒有文字則為 nullptr)
     };
 
     // 總打包結構 (要傳給 Dart 的大包裹)
@@ -146,15 +150,49 @@ extern "C" {
             result->nodes = nullptr;
         }
 
-        // 【關鍵 C】：封裝線段資料 (陣列分配)
+        // 【關鍵 C】：封裝線段資料 (陣列分配) 與權重 ROI 裁切
         result->edgeCount = lines.size();
         if (result->edgeCount > 0) {
             result->edges = (EdgeData*)malloc(sizeof(EdgeData) * result->edgeCount);
             for (int i = 0; i < result->edgeCount; ++i) {
-                result->edges[i].x1 = lines[i][0];
-                result->edges[i].y1 = lines[i][1];
-                result->edges[i].x2 = lines[i][2];
-                result->edges[i].y2 = lines[i][3];
+                int x1 = lines[i][0];
+                int y1 = lines[i][1];
+                int x2 = lines[i][2];
+                int y2 = lines[i][3];
+                
+                result->edges[i].x1 = x1;
+                result->edges[i].y1 = y1;
+                result->edges[i].x2 = x2;
+                result->edges[i].y2 = y2;
+                
+                // 1. 計算線段中點
+                int mx = (x1 + x2) / 2;
+                int my = (y1 + y2) / 2;
+                
+                // 2. 在中點周圍圈出 40x40 的矩形 ROI
+                int roiSize = 40; 
+                cv::Rect roi(mx - roiSize / 2, my - roiSize / 2, roiSize, roiSize);
+                
+                // 防禦邊界溢位
+                roi &= cv::Rect(0, 0, thresholded.cols, thresholded.rows);
+
+                // 3. 判斷該區域有沒有文字 (白色的墨水)
+                cv::Mat cropped = thresholded(roi);
+                int nonZeroPixels = cv::countNonZero(cropped);
+
+                // 假設超過 15 個像素是白的，就判定有寫字 (此閥值可根據線條粗細微調)
+                if (roi.area() > 0 && nonZeroPixels > 15) {
+                    result->edges[i].hasWeight = true;
+                    result->edges[i].pixels = (float*)malloc(28 * 28 * sizeof(float));
+                    
+                    cv::Mat resized, floatMat;
+                    cv::resize(cropped, resized, cv::Size(28, 28));
+                    resized.convertTo(floatMat, CV_32FC1, 1.0 / 255.0);
+                    std::memcpy(result->edges[i].pixels, floatMat.data, 28 * 28 * sizeof(float));
+                } else {
+                    result->edges[i].hasWeight = false;
+                    result->edges[i].pixels = nullptr; // 沒有文字，不分配記憶體
+                }
             }
         } else {
             result->edges = nullptr;
@@ -178,7 +216,15 @@ extern "C" {
                 }
                 free(result->nodes);
             }
-            if (result->edges != nullptr) free(result->edges);
+            // 🌟 釋放邊緣權重的影像記憶體
+            if (result->edges != nullptr) {
+                for (int i = 0; i < result->edgeCount; ++i) {
+                    if (result->edges[i].pixels != nullptr) {
+                        free(result->edges[i].pixels);
+                    }
+                }
+                free(result->edges);
+            }
             free(result);
         }
     }

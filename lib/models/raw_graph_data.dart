@@ -7,16 +7,18 @@ class RawLine extends Equatable {
   final double y1;
   final double x2;
   final double y2;
+  final double? weight; // 新增：CNN 辨識出來的權重值
 
   const RawLine({
     required this.x1,
     required this.y1,
     required this.x2,
     required this.y2,
+    this.weight,
   });
 
   @override
-  List<Object?> get props => [x1, y1, x2, y2];
+  List<Object?> get props => [x1, y1, x2, y2, weight];
 }
 
 class RawGraphData extends Equatable {

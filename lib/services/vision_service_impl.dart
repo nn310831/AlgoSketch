@@ -11,7 +11,7 @@ import 'vision_service.dart';
 import 'ocr_service.dart';
 
 // CNN模型建立好之後
-// 記得去 93行 跟 157行 取消註解 , 並註解 160 行
+// 記得去 98行 跟 162行 跟 187行 取消註解 , 並註解 165、188 行
 // 才會真的運行到模型
 
 // ============================================
@@ -45,6 +45,11 @@ final class NativeEdge extends Struct {
 
   @Int32()
   external int y2;
+
+  @Bool()
+  external bool hasWeight; // 是否有找到文字墨水
+
+  external Pointer<Float> pixels; // 指向 28x28 權重影像的指標
 }
 
 // 3. 鏡射 C++ 的大包裹 VisionResult
@@ -173,6 +178,17 @@ class VisionServiceImpl implements VisionService {
       // 4. 零拷貝讀取 Edges
       for (int i = 0; i < data.edgeCount; i++) {
         final edge = data.edges[i];
+        double? weightValue;
+
+        if (edge.hasWeight && edge.pixels != nullptr) {
+          Float32List edgeTensor = edge.pixels.asTypedList(784);
+          
+          // 使用同一個 interpreter 進行 CNN 推論
+          // String recognizedChar = ocrService.recognizeCharacter(edgeTensor);
+          String recognizedChar = "5"; // MOCK，先假設抓出來的權重都是 5
+          
+          weightValue = double.tryParse(recognizedChar); 
+        }
 
         rawLines.add(
           RawLine(
@@ -180,6 +196,7 @@ class VisionServiceImpl implements VisionService {
             y1: edge.y1.toDouble(),
             x2: edge.x2.toDouble(),
             y2: edge.y2.toDouble(),
+            weight: weightValue,
           ),
         );
       }
