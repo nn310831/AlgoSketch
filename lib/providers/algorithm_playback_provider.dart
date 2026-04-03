@@ -27,7 +27,7 @@ class AlgorithmPlaybackProvider extends ChangeNotifier {
   bool get canGoPrev => _currentIndex > 0;
 
   /// 載入演算法並生成時間軸
-  Future<void> loadAlgorithm(Graph graph, String startNodeId, {String algorithmType = 'BFS'}) async {
+  Future<void> loadAlgorithm(Graph graph, String startNodeId, {String algorithmType = 'BFS', String? endNodeId}) async {
     Stream<AlgorithmState> stream;
     
     switch (algorithmType.toUpperCase()) {
@@ -35,7 +35,7 @@ class AlgorithmPlaybackProvider extends ChangeNotifier {
         stream = _algorithmService.runDFSAlgorithm(graph, startNodeId);
         break;
       case 'DIJKSTRA':
-        stream = _algorithmService.runDijkstraAlgorithm(graph, startNodeId);
+        stream = _algorithmService.runDijkstraAlgorithm(graph, startNodeId, endNodeId: endNodeId);
         break;
       case 'BFS':
       default:

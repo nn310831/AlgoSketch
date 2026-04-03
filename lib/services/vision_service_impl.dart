@@ -10,9 +10,13 @@ import '../models/node.dart';
 import 'vision_service.dart';
 import 'ocr_service.dart';
 
+import 'dart:math';
+
 // CNN模型建立好之後
-// 記得去 98行 跟 162行 跟 187行 取消註解 , 並註解 165、188 行
+// 記得去 102行 跟 166行 跟 191行 取消註解 , 並註解 169、192 行
 // 才會真的運行到模型
+//模擬CNN模型隨機數用 有模型就可以把 ramdom 刪掉了
+final random = Random();
 
 // ============================================
 // 【1. FFI 資料結構對齊】
@@ -161,12 +165,12 @@ class VisionServiceImpl implements VisionService {
         // ★★★ 真正呼叫 CNN 模型辨識數字 ★★★ //訓練好模型後開啟
         //String recognizedChar = ocrService.recognizeCharacter(tensorView);
 
-        //先模擬判斷出來的數字為6
-        String recognizedChar = "6"; 
+        //先模擬判斷出來的數字為隨機數
+        String recognizedChar = (random.nextInt(10)).toString(); 
 
         nodes.add(
           Node(
-            id: 'node_${i}_$recognizedChar',
+            id: 'ID:${i}',
             value: recognizedChar, // 正確將 OCR 辨識結果存入
             centerX: node.x,
             centerY: node.y,
@@ -185,7 +189,7 @@ class VisionServiceImpl implements VisionService {
           
           // 使用同一個 interpreter 進行 CNN 推論
           // String recognizedChar = ocrService.recognizeCharacter(edgeTensor);
-          String recognizedChar = "5"; // MOCK，先假設抓出來的權重都是 5
+          String recognizedChar = (random.nextInt(10)).toString(); // MOCK，先假設抓出來的權重都是 5
           
           weightValue = double.tryParse(recognizedChar); 
         }

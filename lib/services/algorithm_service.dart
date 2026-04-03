@@ -6,5 +6,5 @@ abstract class AlgorithmService {
   /// 以 Stream 的形式回傳，以便 UI 端 (透過 StreamBuilder、Bloc 或 Provider) 監聽狀態改變並分步播放動畫。
   Stream<AlgorithmState> runBFSAlgorithm(Graph graph, String startNodeId);
   Stream<AlgorithmState> runDFSAlgorithm(Graph graph, String startNodeId);
-  Stream<AlgorithmState> runDijkstraAlgorithm(Graph graph, String startNodeId);
+  Stream<AlgorithmState> runDijkstraAlgorithm(Graph graph, String startNodeId, {String? endNodeId});
 }

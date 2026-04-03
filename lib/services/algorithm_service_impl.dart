@@ -17,8 +17,8 @@ class AlgorithmServiceImpl implements AlgorithmService {
   }
 
   @override
-  Stream<AlgorithmState> runDijkstraAlgorithm(Graph graph, String startNodeId) {
-    return Stream.fromIterable(_dijkstraGenerator(graph, startNodeId));
+  Stream<AlgorithmState> runDijkstraAlgorithm(Graph graph, String startNodeId, {String? endNodeId}) {
+    return Stream.fromIterable(_dijkstraGenerator(graph, startNodeId, endNodeId));
   }
 
   /// 核心魔法：使用 sync* 與 yield 實作「步進式 BFS」
@@ -176,11 +176,12 @@ class AlgorithmServiceImpl implements AlgorithmService {
   }
 
   /// 使用優先佇列 (或 List 排序) 與 yield 實作「步進式 Dijkstra」
-  Iterable<AlgorithmState> _dijkstraGenerator(Graph graph, String startNodeId) sync* {
+  Iterable<AlgorithmState> _dijkstraGenerator(Graph graph, String startNodeId, [String? endNodeId]) sync* {
     if (!graph.nodes.containsKey(startNodeId)) return;
 
     // 記錄起點到每個節點的最短距離
     final Map<String, double> distances = {startNodeId: 0.0};
+    final Map<String, String> previousNodes = {};
     
     // 已確定最短距離的節點集合 (Settled)
     final Set<String> settledNodes = {};
@@ -192,6 +193,7 @@ class AlgorithmServiceImpl implements AlgorithmService {
       activeNodeId: startNodeId,
       visitedNodeIds: Set.from(settledNodes),
       queuedNodeIds: List.from(priorityQueue),
+      distances: Map.from(distances),
       description: '初始化 Dijkstra，起點 $startNodeId 距離設為 0，加入優先佇列',
     );
 
@@ -209,11 +211,40 @@ class AlgorithmServiceImpl implements AlgorithmService {
         activeNodeId: currentNodeId,
         visitedNodeIds: Set.from(settledNodes),
         queuedNodeIds: List.from(priorityQueue),
+        distances: Map.from(distances),
         description: '從佇列取出目前距離最短的節點 $currentNodeId，確定其最短路徑！',
       );
 
       // 當我們從優先佇列取出節點，代表該節點的最短路徑已確定
       settledNodes.add(currentNodeId);
+
+      // 如果有設定終點，且取出的是終點，提早結束
+      if (endNodeId != null && currentNodeId == endNodeId) {
+        List<String> pathNodes = [];
+        List<String> pathEdges = [];
+        String? curr = endNodeId;
+        
+        while (curr != null) {
+          pathNodes.insert(0, curr);
+          final prev = previousNodes[curr];
+          if (prev != null) {
+            pathEdges.insert(0, '${prev}-${curr}'); // '-' 分隔
+            pathEdges.insert(0, '${curr}-${prev}'); // 無向圖，兩個方向都存入比對
+          }
+          curr = prev;
+        }
+
+        yield AlgorithmState(
+          activeNodeId: currentNodeId,
+          visitedNodeIds: Set.from(settledNodes),
+          queuedNodeIds: const [],
+          distances: Map.from(distances),
+          shortestPathNodeIds: pathNodes,
+          shortestPathEdgeIds: pathEdges,
+          description: '🎉 已抵達終點 $endNodeId，Dijkstra 演算法提早結束！',
+        );
+        return;
+      }
 
       final neighbors = graph.adjacencyList[currentNodeId] ?? [];
 
@@ -229,9 +260,10 @@ class AlgorithmServiceImpl implements AlgorithmService {
 
         yield AlgorithmState(
           activeNodeId: currentNodeId,
-          activeEdgeId: '${edge.sourceNodeId}_${edge.targetNodeId}',
+          activeEdgeId: '${edge.sourceNodeId}-${edge.targetNodeId}',
           visitedNodeIds: Set.from(settledNodes),
           queuedNodeIds: List.from(priorityQueue),
+          distances: Map.from(distances),
           description: '檢查 $currentNodeId 的鄰居 $targetId (路徑權重: $weight)...',
         );
 
@@ -239,22 +271,25 @@ class AlgorithmServiceImpl implements AlgorithmService {
 
         if (newDist < targetOldDist) {
           distances[targetId] = newDist;
+          previousNodes[targetId] = currentNodeId;
           
           if (!priorityQueue.contains(targetId)) {
             priorityQueue.add(targetId);
             yield AlgorithmState(
               activeNodeId: currentNodeId,
-              activeEdgeId: '${edge.sourceNodeId}_${edge.targetNodeId}',
+              activeEdgeId: '${edge.sourceNodeId}-${edge.targetNodeId}',
               visitedNodeIds: Set.from(settledNodes),
               queuedNodeIds: List.from(priorityQueue),
+              distances: Map.from(distances),
               description: '更新 $targetId 距離為 $newDist，加入優先佇列！',
             );
           } else {
             yield AlgorithmState(
               activeNodeId: currentNodeId,
-              activeEdgeId: '${edge.sourceNodeId}_${edge.targetNodeId}',
+              activeEdgeId: '${edge.sourceNodeId}-${edge.targetNodeId}',
               visitedNodeIds: Set.from(settledNodes),
               queuedNodeIds: List.from(priorityQueue),
+              distances: Map.from(distances),
               description: '發現更短路徑！更新 $targetId 距離為 $newDist (佇列將重新排序)',
             );
           }
@@ -262,9 +297,29 @@ class AlgorithmServiceImpl implements AlgorithmService {
       }
     }
 
+    // 若沒有設定終點，走訪完全部圖後
+    List<String> pathNodes = [];
+    List<String> pathEdges = [];
+    // 若沒有設定終點，我們通常會選距離最遠的節點當作展示路徑，或者乾脆不畫黃線。這裡我們如果有 endNodeId 就畫，沒有就不畫特別的路徑。
+    if (endNodeId != null && settledNodes.contains(endNodeId)) {
+      String? curr = endNodeId;
+      while (curr != null) {
+        pathNodes.insert(0, curr);
+        final prev = previousNodes[curr];
+        if (prev != null) {
+          pathEdges.insert(0, '${prev}-${curr}');
+          pathEdges.insert(0, '${curr}-${prev}');
+        }
+        curr = prev;
+      }
+    }
+
     yield AlgorithmState(
       visitedNodeIds: Set.from(settledNodes),
       queuedNodeIds: const [],
+      distances: Map.from(distances),
+      shortestPathNodeIds: pathNodes,
+      shortestPathEdgeIds: pathEdges,
       description: 'Dijkstra 演算法執行完成！',
     );
   }
