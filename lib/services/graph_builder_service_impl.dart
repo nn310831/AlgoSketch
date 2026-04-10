@@ -10,7 +10,7 @@ import 'graph_builder_service.dart';
 class GraphBuilderServiceImpl implements GraphBuilderService {
   // 容錯門檻 (Epsilon): 允許線段端點距離圓形邊緣多遠 (單位：邏輯像素)
   // 如果白板筆跡比較粗或畫得比較隨意，可以調大這個值
-  static const double toleranceBuffer = 20.0;
+  static const double toleranceBuffer = 100.0;
 
   @override
   Graph buildGraph(RawGraphData rawData) {
@@ -75,17 +75,23 @@ class GraphBuilderServiceImpl implements GraphBuilderService {
 
   /// 尋找座標點是否能「吸附」到某個節點上
   Node? _findSnappingNode(double targetX, double targetY, List<Node> nodes) {
+    Node? closestNode;
+    double minDistance = double.infinity;
+
     for (var node in nodes) {
       // 計算端點與圓心的歐幾里得距離
       double d = _calculateDistance(targetX, targetY, node.centerX, node.centerY);
       
-      // 數學判定公式： d <= r_j + epsilon
-      // 只要距離小於等於「圓的半徑 + 容錯門檻」，就算作連接上了
-      if (d <= node.radius + toleranceBuffer) {
-        return node;
+      // 數學判定公式：修改為 [圓半徑 * 2.0 倍 + 容錯門檻]
+      // 只要線有指到這個圓的勢力範圍附近，就判定為連線成功
+      if (d <= (node.radius * 2.0) + toleranceBuffer) {
+        if (d < minDistance) {
+          minDistance = d;
+          closestNode = node;
+        }
       }
     }
-    return null; // 該端點懸空
+    return closestNode; // 回傳距離最近的節點，若無則懸空
   }
 
   /// 計算兩點間的歐幾里得距離 (Euclidean Distance)

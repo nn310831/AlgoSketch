@@ -13,7 +13,12 @@ class OcrService {
   /// 載入模型 (在 Isolate 中呼叫)
   Future<void> loadModel() async {
     // 載入量化過的 tflite 模型
-    _interpreter = await Interpreter.fromAsset('model.tflite');
+    _interpreter = await Interpreter.fromAsset('assets/model.tflite');
+  }
+
+  /// 從 bytes 載入模型 (解決 Isolate 內無法讀取 Asset 的問題)
+  void loadModelFromBuffer(Uint8List modelBytes) {
+    _interpreter = Interpreter.fromBuffer(modelBytes);
   }
 
   /// 執行單次/批次推論
@@ -51,7 +56,7 @@ class OcrService {
 
     // 文件強調的 Best Practice：信心度過濾
     // 如果機率低於 80% (0.8)，回傳 "?"，讓 UI 提示使用者手動校正，避免演算法崩潰
-    if (maxProb < 0.80) {
+    if (maxProb < 0.60) {
       return "?";
     }
 

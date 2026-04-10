@@ -49,3 +49,5 @@ app.*.map.json
 *.xcframework/
 
 implementplan.md
+
+assets/model.tflite

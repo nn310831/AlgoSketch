@@ -10,13 +10,11 @@ import '../models/node.dart';
 import 'vision_service.dart';
 import 'ocr_service.dart';
 
-import 'dart:math';
 
 // CNN模型建立好之後
 // 記得去 102行 跟 166行 跟 191行 取消註解 , 並註解 169、192 行
 // 才會真的運行到模型
 //模擬CNN模型隨機數用 有模型就可以把 ramdom 刪掉了
-final random = Random();
 
 // ============================================
 // 【1. FFI 資料結構對齊】
@@ -87,6 +85,10 @@ class VisionServiceImpl implements VisionService {
     // 獲取主執行緒的 Token，準備傳給背景 Isolate
     RootIsolateToken rootToken = RootIsolateToken.instance!;
 
+    // 主執行緒先讀取模型
+    final modelData = await rootBundle.load('assets/model.tflite');
+    final modelBytes = modelData.buffer.asUint8List();
+
     // 1. 將繁重工作丟進背景 Isolate
     // UI 執行緒到這裡就不會被卡住，繼續維持 60fps 順暢運作
     final rawData = await Isolate.run(() async {
@@ -98,13 +100,11 @@ class VisionServiceImpl implements VisionService {
       // 載入 OCR 模型
       final ocrService = OcrService();
 
-      //訓練好模型後開啟
-      //await ocrService.loadModel();
+      //訓練好模型後開啟，並傳入 bytes
+      ocrService.loadModelFromBuffer(modelBytes);
 
 
-      // 載入動態套件 (這裡以 process 表示靜態綁定，實際會是 .so 或 framework 等)
       final DynamicLibrary nativeLib = DynamicLibrary.process();
-
       // 綁定 C++ 的處理函式
       final ProcessImageDart nativeProcessImage = nativeLib
           .lookup<NativeFunction<ProcessImageC>>('process_whiteboard_image')
@@ -163,10 +163,10 @@ class VisionServiceImpl implements VisionService {
         Float32List tensorView = node.pixels.asTypedList(784);
 
         // ★★★ 真正呼叫 CNN 模型辨識數字 ★★★ //訓練好模型後開啟
-        //String recognizedChar = ocrService.recognizeCharacter(tensorView);
+        String recognizedChar = ocrService.recognizeCharacter(tensorView);
 
         //先模擬判斷出來的數字為隨機數
-        String recognizedChar = (random.nextInt(10)).toString(); 
+        // String recognizedChar = (random.nextInt(10)).toString(); 
 
         nodes.add(
           Node(
@@ -188,8 +188,8 @@ class VisionServiceImpl implements VisionService {
           Float32List edgeTensor = edge.pixels.asTypedList(784);
           
           // 使用同一個 interpreter 進行 CNN 推論
-          // String recognizedChar = ocrService.recognizeCharacter(edgeTensor);
-          String recognizedChar = (random.nextInt(10)).toString(); // MOCK，先假設抓出來的權重都是 5
+          String recognizedChar = ocrService.recognizeCharacter(edgeTensor);
+          // String recognizedChar = (random.nextInt(10)).toString(); // MOCK，先假設抓出來的權重都是 5
           
           weightValue = double.tryParse(recognizedChar); 
         }

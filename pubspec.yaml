@@ -65,8 +65,8 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # assets:
-  #   - assets/model.tflite  # 宣告單一檔案
+  assets:
+    - assets/model.tflite  # 宣告單一檔案
   #   - assets/images/  
 
   # To add assets to your application, add an assets section, like this:

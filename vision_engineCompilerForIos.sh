@@ -20,5 +20,6 @@ cp cpp/vision_engine.cpp ios/Runner/
 
 echo "[3/3] 開始編譯 Flutter iOS 模擬器版本..."
 flutter build ios --simulator
+flutter run -d FB666244-BC84-4043-8B78-50DA6B940AE3
 
 echo "全自動編譯流程執行完畢"
